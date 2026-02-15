@@ -6,6 +6,8 @@ Diophantine is a desktop application for encrypting and compressing files using 
 
 Named after [Diophantus of Alexandria](https://en.wikipedia.org/wiki/Diophantus), the father of algebra, whose work on equations and number theory laid the foundations for modern cryptography.
 
+<img width="962" height="774" alt="Diophantine" src="https://github.com/user-attachments/assets/671544de-7b16-41d9-b5b9-21cc61475e4a" />
+
 ---
 
 ## Features

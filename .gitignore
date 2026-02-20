@@ -14,3 +14,4 @@ venv/
 
 # User-local runtime config
 config/preferences.json
+.claude/

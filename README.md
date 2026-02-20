@@ -10,8 +10,12 @@ Diophantine is a Python/Tkinter GUI that orchestrates:
 No cloud services, no accounts, no telemetry.
 
 ## Screenshot
+<<<<<<< HEAD
 
 ![Diophantine screenshot](docs/assets/screenshot.png)
+=======
+https://private-user-images.githubusercontent.com/145684973/550004107-671544de-7b16-41d9-b5b9-21cc61475e4a.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NzE1NTEzMzksIm5iZiI6MTc3MTU1MTAzOSwicGF0aCI6Ii8xNDU2ODQ5NzMvNTUwMDA0MTA3LTY3MTU0NGRlLTdiMTYtNDFkOS1iNWI5LTIxY2M2MTQ3NWU0YS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwMjIwJTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDIyMFQwMTMwMzlaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT00NjRmZTMyMTZlZjdiODFkMjkwMTVhOWJhYzAzODc4YTRlMmYyOGUwNzE2NTM0MWY5M2FmMDk3ZTFmZTM1ZWI0JlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCJ9.MygNnbhHRJxC0rJ99iWZGjNFbxZ3kKcMMrJrWJ6UNgA
+>>>>>>> d4778e25c0db39574950fc5d14ba1ae9022aea23
 
 ## Features
 

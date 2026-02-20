@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Python cache/build
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Local secrets / generated keyfiles
+*.diophantus
+
+# User-local runtime config
+config/preferences.json

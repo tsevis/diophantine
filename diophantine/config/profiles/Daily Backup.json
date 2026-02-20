@@ -1,8 +1,0 @@
-{
-  "encryption_method": "gpg",
-  "naming_scheme": "chronos",
-  "single_archive": true,
-  "advanced_enabled": false,
-  "keyfile_path": "",
-  "use_two_factor": false
-}

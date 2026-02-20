@@ -1,8 +1,0 @@
-{
-  "encryption_method": "zip",
-  "naming_scheme": "original",
-  "single_archive": true,
-  "advanced_enabled": false,
-  "keyfile_path": "",
-  "use_two_factor": false
-}

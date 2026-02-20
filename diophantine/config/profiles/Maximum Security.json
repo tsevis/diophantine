@@ -1,8 +1,0 @@
-{
-  "encryption_method": "7z",
-  "naming_scheme": "numeric",
-  "single_archive": false,
-  "advanced_enabled": true,
-  "keyfile_path": "",
-  "use_two_factor": true
-}

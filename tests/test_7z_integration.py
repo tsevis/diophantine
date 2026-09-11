@@ -99,3 +99,28 @@ def test_7z_backends_round_trip_repeatedly(tmp_path):
 
         assert (output / source.name).read_text(encoding="utf-8") == (
             f"round trip {attempt}")
+
+
+def test_7z_extraction_reports_a_rising_percentage(tmp_path):
+    """7-Zip repaints its percentage with backspaces instead of newlines.
+
+    The parser used to split the transcript on newlines alone, so the whole
+    run collapsed into one "line" whose first percentage was the leading
+    ``0%`` -- and the bar sat at zero from start to finish.  Only an archive
+    with enough members to be reported in stages exercises that.
+    """
+    source = tmp_path / "bulk"
+    source.mkdir()
+    for index in range(200):
+        (source / f"f{index:03d}.bin").write_bytes(bytes(index % 256) * 8192)
+    archive = tmp_path / "bulk.7z"
+    output = tmp_path / "output"
+    reported = []
+
+    create_encrypted_7z([str(source)], str(archive), "test-passphrase")
+    extract_encrypted_7z(
+        str(archive), str(output), "test-passphrase", reported.append)
+
+    assert reported, "extraction reported no progress at all"
+    assert max(reported) > 0.0, f"progress never left zero: {reported}"
+    assert reported == sorted(reported), f"progress went backwards: {reported}"

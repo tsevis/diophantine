@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import select
 import signal
 import termios
@@ -102,6 +103,15 @@ def _recent(output: bytearray) -> str:
     return bytes(output[-_RECENT_WINDOW:]).decode("utf-8", errors="replace")
 
 
+# 7-Zip repaints its percentage in place with backspaces and prints no
+# newline until the run ends, so ``splitlines`` hands back the whole
+# transcript as one line whose first percentage is the leading ``0%``.
+# Treating the erase characters as separators too is what turns that back
+# into the sequence of updates it really is.  A percentage has to open its
+# update, which keeps a ``%`` inside a member name from being read as one.
+_PROGRESS_UPDATE = re.compile(r"(?:\A|[\x08\r\n])[ \t]*(\d{1,3})%")
+
+
 def _reap(process_id: int, terminal_fd: int, output: bytearray) -> int | None:
     """Return the child's exit status once it has finished, else ``None``."""
     child_id, status = os.waitpid(process_id, os.WNOHANG)
@@ -112,15 +122,15 @@ def _reap(process_id: int, terminal_fd: int, output: bytearray) -> int | None:
 
 
 def _report_progress(output: str, progress_callback: Callable[[float], None]) -> None:
-    """Forward the most recent percentage the tool printed, if any."""
-    for line in output.splitlines()[-3:]:
-        if "%" not in line:
-            continue
-        try:
-            percent = int(line.split("%")[0].strip().split()[-1])
-        except (ValueError, IndexError):
-            continue
-        progress_callback(float(percent))
+    """Forward the newest percentage the tool printed, if any.
+
+    ``output`` is only the tail of the transcript, so the last update in
+    it is the current one; anything earlier has already been superseded.
+    """
+    for percent in reversed(_PROGRESS_UPDATE.findall(output)):
+        if int(percent) <= 100:
+            progress_callback(float(percent))
+            return
 
 
 def _terminate(process_id: int) -> None:

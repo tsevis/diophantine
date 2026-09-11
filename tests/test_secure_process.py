@@ -13,7 +13,11 @@ import textwrap
 
 import pytest
 
-from utils.secure_process import _child_environment, run_password_prompted
+from utils.secure_process import (
+    _child_environment,
+    _report_progress,
+    run_password_prompted,
+)
 
 pytestmark = pytest.mark.skipif(
     os.name == "nt", reason="The pseudo-terminal channel is POSIX-only")
@@ -173,3 +177,47 @@ def test_message_locale_leaves_an_existing_ctype_alone(monkeypatch):
 
     assert environment["LC_CTYPE"] == "C.UTF-8"
     assert environment["LC_MESSAGES"] == "C"
+
+
+# What a real ``7z x`` run writes to its pseudo-terminal: the percentage is
+# repainted in place with backspaces, never re-printed on a fresh line, so the
+# whole run arrives as one "line" whose first percentage is the leading 0%.
+SEVENZIP_TRANSCRIPT = (
+    "\r\n7-Zip 24.09 (arm64) : Copyright (c) 1999-2024 Igor Pavlov\r\n\r\n"
+    "Scanning the drive for archives:\r\n"
+    "1 file, 4194304 bytes (4 MiB)\r\n\r\n"
+    "Extracting archive: bulk.7z\r\n--\r\n\r\n"
+    "  0%\x08\x08\x08\x08    \x08\x08\x08\x08"
+    " 11% 12 - bulk/f011.bin\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08"
+    " 47% 68 - bulk/f067.bin\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08"
+    " 89% 168 - bulk/f167.bin\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08\x08"
+)
+
+
+def _percentages(transcript):
+    reported = []
+    _report_progress(transcript, reported.append)
+    return reported
+
+
+def test_progress_reads_the_newest_percentage_not_the_first():
+    """Backspace repainting used to pin every report at the leading 0%."""
+    assert _percentages(SEVENZIP_TRANSCRIPT) == [89.0]
+
+
+def test_progress_survives_a_tail_that_starts_mid_transcript():
+    """``_report_progress`` only ever sees the last 8 KiB of the buffer."""
+    tail = SEVENZIP_TRANSCRIPT[-40:]
+
+    assert _percentages(tail) == [89.0]
+
+
+def test_progress_ignores_a_percent_sign_inside_a_member_name():
+    transcript = (
+        "  0%\x08\x08\x08\x08 63% 91 - bulk/50%-off-flyer.pdf\x08\x08\x08")
+
+    assert _percentages(transcript) == [63.0]
+
+
+def test_progress_stays_silent_until_the_tool_prints_a_percentage():
+    assert _percentages("Scanning the drive for archives:\r\n") == []

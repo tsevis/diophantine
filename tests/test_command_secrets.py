@@ -53,3 +53,29 @@ def test_veracrypt_password_is_not_part_of_the_command(tmp_path, monkeypatch):
     )
     assert captured[-1][0][2] == "--dismount"
     assert captured[-1][0][-1] != "-d"
+
+
+def test_unmount_requires_an_explicit_mount_directory(monkeypatch):
+    """Unmounting everything would dismount volumes this app never mounted."""
+    monkeypatch.setattr(veracrypt_engine, "_find_veracrypt", lambda: "veracrypt")
+    monkeypatch.setattr(
+        veracrypt_engine, "_run_veracrypt",
+        lambda *args, **kwargs: pytest.fail("should not have run"))
+
+    with pytest.raises(TypeError):
+        veracrypt_engine.unmount_veracrypt_container()
+
+    with pytest.raises(ValueError, match="mount directory is required"):
+        veracrypt_engine.unmount_veracrypt_container("")
+
+
+def test_unmount_dismounts_only_the_directory_it_is_given(monkeypatch):
+    captured = []
+    monkeypatch.setattr(veracrypt_engine, "_find_veracrypt", lambda: "veracrypt")
+    monkeypatch.setattr(
+        veracrypt_engine, "_run_veracrypt",
+        lambda command, *args, **kwargs: captured.append(command))
+
+    veracrypt_engine.unmount_veracrypt_container("/Volumes/vault")
+
+    assert captured == [["veracrypt", "--text", "--dismount", "/Volumes/vault"]]

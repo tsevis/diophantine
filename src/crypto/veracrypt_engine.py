@@ -132,12 +132,13 @@ def mount_veracrypt_container(container_path, mount_dir, password):
     return mount_dir
 
 
-def unmount_veracrypt_container(mount_dir=None):
+def unmount_veracrypt_container(mount_dir):
     """
     Unmount a VeraCrypt container.
 
     Args:
-        mount_dir: Specific mount point to unmount. If None, unmounts all.
+        mount_dir: The mount point to unmount. Required: unmounting every
+            volume at once would dismount containers this app never mounted.
     """
     vc = _find_veracrypt()
     if not mount_dir:

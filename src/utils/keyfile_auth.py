@@ -2,11 +2,13 @@
 Keyfile authentication module for generating, storing, and using keyfiles
 """
 
-import os
-import secrets
 import hashlib
 import hmac
-from pathlib import Path
+import os
+import secrets
+
+from utils.safe_files import require_new_file
+
 
 def generate_keyfile(file_path, size=64):
     """
@@ -16,15 +18,17 @@ def generate_keyfile(file_path, size=64):
         file_path (str): Path where the keyfile will be saved (.diophantus extension recommended)
         size (int): Size of the key in bytes (default 64 bytes = 512 bits)
     """
+    if not isinstance(size, int) or not 16 <= size <= 1024:
+        raise ValueError("Keyfile size must be between 16 and 1024 bytes.")
+    require_new_file(file_path)
+
     # Generate cryptographically secure random bytes
     key_data = secrets.token_bytes(size)
-    
-    # Write the key data to the file
-    with open(file_path, 'wb') as f:
-        f.write(key_data)
-    
-    # Set restrictive file permissions (read/write for owner only)
-    os.chmod(file_path, 0o600)
+
+    # Create owner-only without briefly exposing the new keyfile via umask.
+    fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as file:
+        file.write(key_data)
     
     return file_path
 
@@ -64,12 +68,8 @@ def validate_keyfile(file_path):
         with open(file_path, 'rb') as f:
             key_data = f.read()
         
-        # Basic check: key should be non-empty
-        if len(key_data) == 0:
-            return False
-        
-        return True
-    except:
+        return len(key_data) != 0
+    except OSError:
         return False
 
 def combine_keyfile_and_password(keyfile_path, password):
@@ -109,12 +109,10 @@ def get_removable_drives():
     removable_drives = []
     
     if system == "Windows":
-        import string
         import ctypes
-        from ctypes import wintypes
+        import string
         
         # Get logical drives
-        drives = []
         bitmask = ctypes.windll.kernel32.GetLogicalDrives()
         for letter in string.ascii_uppercase:
             if bitmask & 1:

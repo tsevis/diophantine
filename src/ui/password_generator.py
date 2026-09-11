@@ -1,7 +1,7 @@
-import tkinter as tk
-from tkinter import ttk
 import secrets
 import string
+import tkinter as tk
+from tkinter import ttk
 
 
 class PasswordGeneratorDialog:
@@ -95,20 +95,30 @@ class PasswordGeneratorDialog:
 
     def _generate(self):
         charset = ""
+        selected_sets = []
         if self.use_upper.get():
             charset += string.ascii_uppercase
+            selected_sets.append(string.ascii_uppercase)
         if self.use_lower.get():
             charset += string.ascii_lowercase
+            selected_sets.append(string.ascii_lowercase)
         if self.use_digits.get():
             charset += string.digits
+            selected_sets.append(string.digits)
         if self.use_symbols.get():
             charset += string.punctuation
+            selected_sets.append(string.punctuation)
 
         if not charset:
             charset = string.ascii_letters + string.digits
+            selected_sets = [charset]
 
         length = self.length_var.get()
-        password = "".join(secrets.choice(charset) for _ in range(length))
+        characters = [secrets.choice(charset) for _ in range(length)]
+        for index, character_set in enumerate(selected_sets):
+            characters[index] = secrets.choice(character_set)
+        secrets.SystemRandom().shuffle(characters)
+        password = "".join(characters)
 
         self.password_entry.config(state=tk.NORMAL)
         self.password_entry.delete(0, tk.END)

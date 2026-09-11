@@ -1,4 +1,5 @@
 from tkinterdnd2 import TkinterDnD
+
 from ui.main_window import DiophantineUI
 from utils.preferences import load_preferences
 

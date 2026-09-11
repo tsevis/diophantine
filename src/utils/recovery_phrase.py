@@ -4,13 +4,12 @@ Based on BIP-39 standard for mnemonic phrases
 """
 
 import hashlib
-import hmac
 import os
-import binascii
 from enum import Enum
 
+
 class WordList(Enum):
-    ENGLISH = [
+    ENGLISH = (
         "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse",
         "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act",
         "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit",
@@ -216,7 +215,7 @@ class WordList(Enum):
         "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world",
         "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year",
         "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"
-    ]
+    )
 
 def mnemonic_from_entropy(entropy_bytes):
     """Generate a mnemonic phrase from entropy bytes."""

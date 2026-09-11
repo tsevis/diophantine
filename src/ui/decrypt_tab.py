@@ -1,21 +1,23 @@
+import hashlib
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-import os
-import hashlib
 
-from crypto.zip_engine import extract_encrypted_zip
+from crypto.gpg_engine import extract_gpg_encrypted
+from crypto.sevenz_engine import extract_encrypted_7z
 from crypto.veracrypt_engine import (
+    extract_veracrypt_container,
     mount_veracrypt_container,
     unmount_veracrypt_container,
-    extract_veracrypt_container
 )
-from crypto.sevenz_engine import extract_encrypted_7z
-from crypto.gpg_engine import extract_gpg_encrypted
+from crypto.zip_engine import extract_encrypted_zip
 from utils.keyfile_auth import (
-    load_keyfile, validate_keyfile, combine_keyfile_and_password
+    combine_keyfile_and_password,
+    load_keyfile,
+    validate_keyfile,
 )
 from utils.recovery_phrase import validate_recovery_phrase
-
+from utils.safe_files import require_single_line_secret
 
 # Extension-to-type mapping for auto-detection
 FILE_TYPE_MAP = {
@@ -509,9 +511,9 @@ class DecryptTab:
                     f"Container unmounted from:\n{self.current_mount}")
                 self.current_mount = None
                 self.unmount_btn.pack_forget()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - UI boundary reports tool failures
                 messagebox.showerror("Error",
-                    f"Failed to unmount:\n{str(e)}")
+                    f"Failed to unmount:\n{e!s}")
 
     # ── Password Resolution ──────────────────────────────────────
 
@@ -529,7 +531,7 @@ class DecryptTab:
                 messagebox.showerror("Diophantine",
                     "Invalid recovery phrase.")
                 return None
-            return phrase_text
+            return " ".join(words)
 
         password_text = self.password.get()
 
@@ -539,6 +541,11 @@ class DecryptTab:
                     "Keyfile is invalid or corrupted.")
                 return None
             if password_text:
+                try:
+                    require_single_line_secret(password_text)
+                except ValueError as error:
+                    messagebox.showerror("Diophantine", str(error))
+                    return None
                 return combine_keyfile_and_password(
                     self.current_keyfile, password_text)
             else:
@@ -548,6 +555,11 @@ class DecryptTab:
         if not password_text:
             messagebox.showerror("Diophantine",
                 "Please enter a password.")
+            return None
+        try:
+            require_single_line_secret(password_text)
+        except ValueError as error:
+            messagebox.showerror("Diophantine", str(error))
             return None
         return password_text
 
@@ -609,7 +621,7 @@ class DecryptTab:
                     continue
 
                 results.append((filename, "OK"))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - continue remaining user files
                 results.append((filename, str(e)))
 
             self.app.progress["value"] = i + 1
@@ -660,9 +672,9 @@ class DecryptTab:
             messagebox.showinfo("Diophantine",
                 f"Container mounted at:\n{mount_dir}\n\n"
                 "Use the Unmount button when done.")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - UI boundary reports tool failures
             messagebox.showerror("Diophantine",
-                f"Mount failed:\n{str(e)}")
+                f"Mount failed:\n{e!s}")
 
     def _extract_veracrypt(self, file_path, output_dir, password):
         def on_progress(percent):

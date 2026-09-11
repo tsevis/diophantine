@@ -1,20 +1,23 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk, simpledialog
-import os
 import hashlib
+import os
+import tkinter as tk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
-from crypto.zip_engine import create_encrypted_zip
-from crypto.veracrypt_engine import create_veracrypt_container
-from crypto.sevenz_engine import create_encrypted_7z
 from crypto.gpg_engine import create_gpg_encrypted
-from utils.naming import original_name, numeric_name, chronos_name
+from crypto.sevenz_engine import create_encrypted_7z
+from crypto.veracrypt_engine import create_veracrypt_container
+from crypto.zip_engine import create_encrypted_zip
 from utils.entropy import calculate_entropy, entropy_to_strength
-from utils.recovery_phrase import generate_recovery_phrase
 from utils.keyfile_auth import (
-    generate_keyfile, load_keyfile, validate_keyfile,
-    combine_keyfile_and_password
+    combine_keyfile_and_password,
+    generate_keyfile,
+    load_keyfile,
+    validate_keyfile,
 )
-from utils.profiles import save_profile, load_profile, list_profiles, delete_profile
+from utils.naming import chronos_name, numeric_name, original_name
+from utils.profiles import delete_profile, list_profiles, load_profile, save_profile
+from utils.recovery_phrase import generate_recovery_phrase, validate_recovery_phrase
+from utils.safe_files import require_single_line_secret
 
 # Extension map for each encryption method
 EXT_MAP = {
@@ -102,7 +105,7 @@ class EncryptTab:
             self.single_archive)
 
         ui.section_label(basic_inner, "Encryption Method")
-        self.encryption_method = tk.StringVar(value="zip")
+        self.encryption_method = tk.StringVar(value="7z")
         self.encryption_method.trace_add("write", self._on_method_change)
         ui.radio(basic_inner, "ZIP (AES-256)", self.encryption_method, "zip")
         ui.radio(basic_inner, "7z (AES-256)", self.encryption_method, "7z")
@@ -261,10 +264,9 @@ class EncryptTab:
 
     def add_folder(self):
         folder = filedialog.askdirectory(title="Select folder")
-        if folder:
-            if folder not in self.items:
-                self.items.append(folder)
-                self.listbox.insert(tk.END, folder)
+        if folder and folder not in self.items:
+            self.items.append(folder)
+            self.listbox.insert(tk.END, folder)
         self._update_item_count()
 
     def remove_item(self):
@@ -321,13 +323,16 @@ class EncryptTab:
     def _update_size_estimate(self):
         """Show estimated container size when VeraCrypt is selected."""
         if self.encryption_method.get() == "veracrypt" and self.items:
-            total = self._calculate_total_size()
-            # 10% overhead, minimum 10MB
-            estimated_mb = max(10, int(total * 1.1 / (1024 * 1024)) + 1)
+            estimated_mb = self._estimated_container_size_mb()
             self.size_estimate_label.config(
                 text=f"Estimated container size: {estimated_mb} MB")
         else:
             self.size_estimate_label.config(text="")
+
+    def _estimated_container_size_mb(self):
+        """Return enough space for the selected inputs plus filesystem overhead."""
+        total = self._calculate_total_size()
+        return max(10, int(total * 1.1 / (1024 * 1024)) + 1)
 
     def _on_method_change(self, *args):
         self._update_size_estimate()
@@ -353,7 +358,11 @@ class EncryptTab:
             "keyfile_path": self.current_keyfile or "",
             "use_two_factor": self.use_two_factor.get(),
         }
-        save_profile(name, settings)
+        try:
+            save_profile(name, settings)
+        except ValueError as error:
+            messagebox.showerror("Diophantine", str(error))
+            return
         self._refresh_profiles()
         self.profile_var.set(name)
         messagebox.showinfo("Diophantine", f"Profile '{name}' saved.")
@@ -365,7 +374,7 @@ class EncryptTab:
         settings = load_profile(name)
         if settings is None:
             return
-        self.encryption_method.set(settings.get("encryption_method", "zip"))
+        self.encryption_method.set(settings.get("encryption_method", "7z"))
         self.naming_scheme.set(settings.get("naming_scheme", "original"))
         self.single_archive.set(settings.get("single_archive", False))
         self.advanced_enabled.set(settings.get("advanced_enabled", False))
@@ -441,9 +450,9 @@ class EncryptTab:
                     foreground=p["info_fg"])
                 messagebox.showinfo("Success",
                     f"Keyfile generated successfully:\n{file_path}")
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 messagebox.showerror("Error",
-                    f"Failed to generate keyfile:\n{str(e)}")
+                    f"Failed to generate keyfile:\n{e!s}")
 
     def select_keyfile(self):
         file_path = filedialog.askopenfilename(
@@ -464,9 +473,9 @@ class EncryptTab:
                     self.keyfile_info.config(
                         text="Invalid keyfile selected",
                         foreground=p["warning_fg"])
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 messagebox.showerror("Error",
-                    f"Error validating keyfile:\n{str(e)}")
+                    f"Error validating keyfile:\n{e!s}")
                 self.keyfile_info.config(
                     text="Error validating keyfile",
                     foreground=self.app.palette["warning_fg"])
@@ -483,7 +492,7 @@ class EncryptTab:
         entropy = calculate_entropy(password)
         strength_label, color = entropy_to_strength(entropy)
         self.strength.config(
-            text=f"Entropy: {entropy:.1f} bits ({strength_label})",
+            text=f"Estimated ceiling: {entropy:.1f} bits ({strength_label})",
             foreground=color)
 
     # ── Encrypt ──────────────────────────────────────────────────
@@ -497,14 +506,16 @@ class EncryptTab:
 
         recovery_text = ""
         if self.advanced_enabled.get():
-            try:
-                recovery_text = self.recovery_phrase_display.get(
-                    1.0, tk.END).strip()
-            except:
-                recovery_text = ""
+            recovery_text = self.recovery_phrase_display.get(
+                1.0, tk.END).strip()
 
         if recovery_text:
-            password = recovery_text
+            recovery_words = recovery_text.split()
+            if not validate_recovery_phrase(recovery_words):
+                messagebox.showerror(
+                    "Diophantine", "Invalid recovery phrase.")
+                return
+            password = " ".join(recovery_words)
         elif (self.current_keyfile and self.use_two_factor.get()
                 and self.advanced_enabled.get()):
             if not validate_keyfile(self.current_keyfile):
@@ -516,6 +527,11 @@ class EncryptTab:
             if not password_input:
                 messagebox.showerror("Error",
                     "Password required for two-factor authentication.")
+                return
+            try:
+                require_single_line_secret(password_input)
+            except ValueError as error:
+                messagebox.showerror("Diophantine", str(error))
                 return
 
             password = combine_keyfile_and_password(
@@ -532,14 +548,21 @@ class EncryptTab:
             password = hashlib.sha256(keyfile_data).hexdigest()
         else:
             password = self.password.get()
+            if not password:
+                messagebox.showerror("Diophantine", "Please enter a password.")
+                return
+            try:
+                require_single_line_secret(password)
+            except ValueError as error:
+                messagebox.showerror("Diophantine", str(error))
+                return
 
-            if not recovery_text:
-                entropy = calculate_entropy(password)
-                if entropy < 50:
-                    if not messagebox.askyesno("Diophantine",
-                            "Password entropy is low. "
-                            "Continue anyway?"):
-                        return
+            entropy = calculate_entropy(password)
+            if not recovery_text and entropy < 50 and not messagebox.askyesno(
+                    "Diophantine",
+                    "Password strength may be low. "
+                    "Use Generate for a random password. Continue anyway?"):
+                return
 
         output_dir = filedialog.askdirectory()
         if not output_dir:
@@ -556,7 +579,12 @@ class EncryptTab:
         try:
             if method == "veracrypt":
                 out = os.path.join(output_dir, "diophantine.hc")
-                create_veracrypt_container(self.items, out, password)
+                create_veracrypt_container(
+                    self.items,
+                    out,
+                    password,
+                    size_mb=self._estimated_container_size_mb(),
+                )
             elif method == "gpg":
                 if self.single_archive.get() or len(self.items) > 1:
                     out = os.path.join(output_dir, "diophantine.tar.gpg")
@@ -623,6 +651,6 @@ class EncryptTab:
             self.app.progress["value"] = self.app.progress["maximum"]
             self.root.update_idletasks()
             messagebox.showinfo("Diophantine", "Encryption complete.")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - UI boundary reports tool failures
             messagebox.showerror("Diophantine",
-                f"Encryption failed:\n{str(e)}")
+                f"Encryption failed:\n{e!s}")

@@ -1,15 +1,40 @@
 import math
 import re
-import string
+from itertools import pairwise
+
+
+def _shortest_repeating_unit(value):
+    """Return a repeated unit, or ``None`` when the value is not periodic."""
+    for size in range(1, len(value) // 2 + 1):
+        if len(value) % size == 0 and value == value[:size] * (len(value) // size):
+            return value[:size]
+    return None
+
+
+def _is_simple_sequence(value):
+    """Recognize obvious ascending or descending character sequences."""
+    if len(value) < 3:
+        return False
+    steps = [ord(right) - ord(left) for left, right in pairwise(value)]
+    return all(step == 1 for step in steps) or all(step == -1 for step in steps)
 
 def calculate_entropy(password):
     """
-    Calculate the actual entropy of a password based on the character sets used.
-    Entropy = log2(R^L) where R is the size of the character set and L is the length.
+    Estimate an upper bound for a non-generated password's entropy.
+
+    Composition cannot measure a human-chosen password's true entropy.  This
+    deliberately penalizes obvious repetitions and sequences so the UI never
+    labels them strong merely because they are long.
     """
     if not password:
         return 0
-    
+
+    repeated_unit = _shortest_repeating_unit(password)
+    if repeated_unit is not None:
+        password = repeated_unit
+    if len(set(password)) == 1 or _is_simple_sequence(password):
+        return 0
+
     # Determine the character set used in the password
     charset_size = 0
     
@@ -29,11 +54,11 @@ def calculate_entropy(password):
     if has_special:
         charset_size += 32  # Common special characters
     
-    # If no character set detected, default to lowercase
+    # If no character set detected, default to lowercase.
     if charset_size == 0:
         charset_size = 26
     
-    # Calculate entropy: log2(R^L) = L * log2(R)
+    # This remains an upper bound, not a measurement of user-chosen entropy.
     entropy = len(password) * math.log2(charset_size) if charset_size > 0 else 0
     
     return entropy

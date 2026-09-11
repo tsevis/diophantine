@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk
-import platform
 
 from ui.theme import get_palette, is_macos
 
@@ -81,8 +80,8 @@ class DiophantineUI:
         self.notebook = ttk.Notebook(main)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
-        from ui.encrypt_tab import EncryptTab
         from ui.decrypt_tab import DecryptTab
+        from ui.encrypt_tab import EncryptTab
 
         self.encrypt_tab = EncryptTab(self.notebook, self)
         self.decrypt_tab = DecryptTab(self.notebook, self)

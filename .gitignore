@@ -15,3 +15,10 @@ venv/
 # User-local runtime config
 config/preferences.json
 .claude/
+
+# Tooling caches and coverage artifacts
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/

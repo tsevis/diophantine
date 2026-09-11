@@ -548,9 +548,8 @@ class DecryptTab:
                     return None
                 return combine_keyfile_and_password(
                     self.current_keyfile, password_text)
-            else:
-                keyfile_data = load_keyfile(self.current_keyfile)
-                return hashlib.sha256(keyfile_data).hexdigest()
+            keyfile_data = load_keyfile(self.current_keyfile)
+            return hashlib.sha256(keyfile_data).hexdigest()
 
         if not password_text:
             messagebox.showerror("Diophantine",

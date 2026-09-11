@@ -37,9 +37,16 @@ def test_commit_staging_dir_rejects_existing_output(tmp_path):
     assert existing.read_text(encoding="utf-8") == "preserve me"
 
 
-@pytest.mark.parametrize("secret", ["", "line\nbreak", "line\rbreak"])
-def test_secret_must_be_nonempty_and_single_line(secret):
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    ("secret", "message"),
+    [
+        ("", "cannot be empty"),
+        ("line\nbreak", "cannot contain newlines"),
+        ("line\rbreak", "cannot contain newlines"),
+    ],
+)
+def test_secret_must_be_nonempty_and_single_line(secret, message):
+    with pytest.raises(ValueError, match=message):
         require_single_line_secret(secret)
 
 

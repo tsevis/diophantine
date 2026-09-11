@@ -13,4 +13,4 @@ def password_strength(password):
     if any(not c.isalnum() for c in password):
         score += 1
 
-    return score  # 0–6
+    return score  # 0-6

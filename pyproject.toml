@@ -1,0 +1,88 @@
+# Tooling configuration for Diophantine.
+#
+# There is no build backend here on purpose: Diophantine is a GUI application
+# run from source, not a distributable package. This file exists so that ruff,
+# pytest and coverage all pick up one explicit, checked-in configuration
+# instead of silently falling back to their defaults.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".claude"]
+
+[tool.ruff.lint]
+# Explicit selection. Without this, ruff runs only its default E4/E7/E9/F
+# subset, which passes trivially and hides real findings.
+select = [
+    "E",    # pycodestyle errors (incl. E501 line-too-long)
+    "W",    # pycodestyle warnings (trailing/blank-line whitespace)
+    "F",    # pyflakes: unused imports and names, undefined names
+    "I",    # isort: import ordering
+    "UP",   # pyupgrade: outdated syntax for the target Python
+    "B",    # flake8-bugbear: likely bugs and footguns
+    "BLE",  # blind `except Exception` (the codebase already noqa's the
+            # four deliberate UI-boundary catches, so the rule was intended)
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RET",  # flake8-return
+    "PIE",  # flake8-pie: misc. lints
+    "RSE",  # flake8-raise
+    "ISC",  # implicit string concatenation
+    "TID",  # tidy imports (no relative imports beyond the package)
+    "ERA",  # commented-out code
+    "PT",   # flake8-pytest-style
+    "RUF",  # ruff-specific rules
+]
+
+# Rules deliberately left out of `select` above, with reasons:
+#   PTH  - os.path -> pathlib migration. ~75 call sites across the crypto
+#          engines and file utilities. A worthwhile follow-up, but a
+#          behaviour-touching refactor, not lint hygiene.
+#   ARG  - unused arguments. This codebase is callback-heavy (Tk `event`
+#          handlers, progress callbacks taking `percent`); the rule is almost
+#          entirely false positives against those fixed signatures.
+#   PLC0415 - imports inside functions. Used deliberately here to keep
+#          platform-specific and optional dependencies lazy.
+#   PLR  - magic values and complexity thresholds. Would require restructuring
+#          the UI modules rather than fixing defects.
+
+ignore = [
+    # Formatter-compatible: ruff's own recommendation when ISC001 and the
+    # formatter could disagree about implicit concatenation.
+    "ISC001",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    # GUI tests construct real windows on the developer's desktop. They are
+    # opt-in only: run them with `pytest -m gui` and never by default.
+    "-m", "not gui",
+]
+markers = [
+    "gui: opens real windows; excluded from the default run",
+]
+
+[tool.coverage.run]
+# Each package directory is listed explicitly. `source = ["src"]` alone would
+# under-report: coverage.py only descends into subdirectories that contain an
+# `__init__.py`, and these are plain sys.path directories, so unimported modules
+# would silently vanish from the denominator instead of showing up as 0%.
+source = ["src", "src/crypto", "src/ui", "src/utils"]
+branch = true
+omit = [
+    "src/main.py",  # thin Tk entry point; exercised only by launching the GUI
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

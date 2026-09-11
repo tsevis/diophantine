@@ -48,7 +48,8 @@ def create_encrypted_7z(items, output_path, password):
         "-p",
         output_path,
         "--",
-    ] + list(items)
+        *items,
+    ]
 
     _run_7z(cmd, password, confirm_password=True)
 

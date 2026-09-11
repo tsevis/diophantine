@@ -55,7 +55,8 @@ def create_encrypted_zip(
         "-p",
         output_path,
         "--",
-    ] + list(items)
+        *items,
+    ]
 
     _run_7z(cmd, password, confirm_password=True)
 

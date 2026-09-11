@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import re
@@ -35,10 +36,8 @@ def _write_json_private(path, content):
             os.fsync(file.fileno())
         os.replace(temporary_path, path)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.close(fd)
-        except OSError:
-            pass
         if os.path.exists(temporary_path):
             os.remove(temporary_path)
         raise
@@ -60,7 +59,7 @@ def load_profile(name):
     if not os.path.isfile(path):
         return None
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError):
         return None

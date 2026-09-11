@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import tempfile
@@ -24,7 +25,7 @@ def load_preferences():
     prefs = dict(DEFAULT_PREFERENCES)
     if os.path.isfile(path):
         try:
-            with open(path, "r") as f:
+            with open(path) as f:
                 saved = json.load(f)
             prefs.update(saved)
         except (json.JSONDecodeError, OSError):
@@ -47,10 +48,8 @@ def save_preferences(prefs):
             os.fsync(file.fileno())
         os.replace(temporary_path, path)
     except Exception:
-        try:
+        with contextlib.suppress(OSError):
             os.close(fd)
-        except OSError:
-            pass
         if os.path.exists(temporary_path):
             os.remove(temporary_path)
         raise

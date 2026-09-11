@@ -6,7 +6,7 @@ from utils import profiles
 def test_profile_names_cannot_escape_profiles_directory(tmp_path, monkeypatch):
     monkeypatch.setattr(profiles, "_profiles_dir", lambda: str(tmp_path))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Profile names may contain"):
         profiles.save_profile("../outside", {"encryption_method": "7z"})
 
     assert not (tmp_path.parent / "outside.json").exists()

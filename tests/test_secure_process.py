@@ -102,7 +102,7 @@ def test_a_tool_that_never_prompts_fails_loudly_instead_of_hanging():
 
 
 def test_an_empty_secret_is_refused_before_any_process_starts(prompter):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="cannot be empty"):
         run_password_prompted(prompter(), "")
 
 

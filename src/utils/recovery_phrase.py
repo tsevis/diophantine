@@ -232,92 +232,93 @@ class WordList(Enum):
 def mnemonic_from_entropy(entropy_bytes):
     """Generate a mnemonic phrase from entropy bytes."""
     if len(entropy_bytes) < 16 or len(entropy_bytes) > 32 or len(entropy_bytes) % 4 != 0:
-        raise ValueError("Invalid entropy length. Must be between 16 and 32 bytes and divisible by 4.")
-    
+        raise ValueError(
+            "Invalid entropy length. Must be between 16 and 32 bytes "
+            "and divisible by 4.")
+
     # Calculate checksum length
     entropy_bits = len(entropy_bytes) * 8
     checksum_bits = entropy_bits // 32
-    
+
     # Calculate hash of entropy
     hash_bytes = hashlib.sha256(entropy_bytes).digest()
-    
+
     # Extract checksum bits from hash
     checksum_int = int.from_bytes(hash_bytes[:1], 'big')
     checksum = (checksum_int >> (8 - checksum_bits)) & ((1 << checksum_bits) - 1)
-    
+
     # Convert entropy + checksum to binary string
     entropy_int = int.from_bytes(entropy_bytes, 'big')
     entropy_binary = bin(entropy_int)[2:].zfill(entropy_bits)
     checksum_binary = bin(checksum)[2:].zfill(checksum_bits)
-    
+
     # Combine entropy and checksum
     binary_string = entropy_binary + checksum_binary
-    
+
     # Split into 11-bit chunks
     chunks = [binary_string[i:i+11] for i in range(0, len(binary_string), 11)]
-    
+
     # Convert each chunk to a word index
     word_indexes = [int(chunk, 2) for chunk in chunks]
-    
+
     # Map indexes to words
     word_list = WordList.ENGLISH.value
-    mnemonic = [word_list[index] for index in word_indexes]
-    
-    return mnemonic
+    return [word_list[index] for index in word_indexes]
 
 def entropy_from_mnemonic(mnemonic_words):
     """Validate a mnemonic phrase and return the original entropy bytes."""
     word_list = WordList.ENGLISH.value
     word_to_index = {word: i for i, word in enumerate(word_list)}
-    
+
     # Validate all words are in the list
     for word in mnemonic_words:
         if word not in word_to_index:
             raise ValueError(f"Invalid mnemonic word: {word}")
-    
+
     # Convert words to binary
     binary_string = ""
     for word in mnemonic_words:
         index = word_to_index[word]
         binary_chunk = bin(index)[2:].zfill(11)
         binary_string += binary_chunk
-    
+
     # Calculate lengths
     total_bits = len(binary_string)
     if total_bits % 33 != 0:
         raise ValueError("Invalid mnemonic length")
-    
+
     checksum_bits = total_bits // 33
     entropy_bits = total_bits - checksum_bits
-    
+
     # Split into entropy and checksum
     entropy_binary = binary_string[:entropy_bits]
     checksum_binary = binary_string[entropy_bits:]
-    
+
     # Convert back to integers
     entropy_int = int(entropy_binary, 2)
     checksum_int = int(checksum_binary, 2)
-    
+
     # Convert entropy to bytes
     entropy_bytes = entropy_int.to_bytes(entropy_bits // 8, 'big')
-    
+
     # Verify checksum
     expected_hash = hashlib.sha256(entropy_bytes).digest()
-    expected_checksum = (int.from_bytes(expected_hash[:1], 'big') >> (8 - checksum_bits)) & ((1 << checksum_bits) - 1)
-    
+    expected_checksum = (
+        int.from_bytes(expected_hash[:1], 'big') >> (8 - checksum_bits)
+    ) & ((1 << checksum_bits) - 1)
+
     if checksum_int != expected_checksum:
         raise ValueError("Invalid mnemonic checksum")
-    
+
     return entropy_bytes
 
 def generate_recovery_phrase(strength=128):
     """Generate a recovery phrase with the specified entropy strength in bits."""
     if strength not in [128, 160, 192, 224, 256]:
         raise ValueError("Strength must be 128, 160, 192, 224, or 256 bits")
-    
+
     entropy_bytes = os.urandom(strength // 8)
-    mnemonic = mnemonic_from_entropy(entropy_bytes)
-    return mnemonic
+    return mnemonic_from_entropy(entropy_bytes)
 
 def validate_recovery_phrase(mnemonic_words):
     """Validate a recovery phrase."""
@@ -331,5 +332,6 @@ def mnemonic_to_seed(mnemonic_words, passphrase=""):
     """Convert a mnemonic phrase to a seed using PBKDF2."""
     mnemonic_str = " ".join(mnemonic_words)
     salt = "mnemonic" + passphrase
-    seed = hashlib.pbkdf2_hmac("sha512", mnemonic_str.encode("utf-8"), salt.encode("utf-8"), 2048)
-    return seed
+    return hashlib.pbkdf2_hmac(
+        "sha512", mnemonic_str.encode("utf-8"), salt.encode("utf-8"), 2048
+    )

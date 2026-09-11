@@ -16,8 +16,12 @@ from utils.keyfile_auth import (
     load_keyfile,
     validate_keyfile,
 )
-from utils.recovery_phrase import validate_recovery_phrase
+from utils.recovery_phrase import (
+    phrase_secret_candidates,
+    validate_recovery_phrase,
+)
 from utils.safe_files import require_single_line_secret
+from utils.secret_attempts import attempt_with_secrets
 
 # Extension-to-type mapping for auto-detection
 FILE_TYPE_MAP = {
@@ -518,7 +522,16 @@ class DecryptTab:
     # ── Password Resolution ──────────────────────────────────────
 
     def _resolve_password(self):
-        """Resolve the decryption password from all auth sources."""
+        """Resolve a single decryption secret, for callers that need one."""
+        candidates = self._resolve_password_candidates()
+        return None if candidates is None else candidates[0]
+
+    def _resolve_password_candidates(self):
+        """Resolve every secret worth trying, most likely first.
+
+        A recovery phrase yields two: the secret derived from it today, and
+        the bare phrase that archives written before derivation used.
+        """
 
         if self.use_recovery_phrase.get():
             phrase_text = self.recovery_input.get(1.0, tk.END).strip()
@@ -531,7 +544,7 @@ class DecryptTab:
                 messagebox.showerror("Diophantine",
                     "Invalid recovery phrase.")
                 return None
-            return " ".join(words)
+            return phrase_secret_candidates(words)
 
         password_text = self.password.get()
 
@@ -546,10 +559,10 @@ class DecryptTab:
                 except ValueError as error:
                     messagebox.showerror("Diophantine", str(error))
                     return None
-                return combine_keyfile_and_password(
-                    self.current_keyfile, password_text)
+                return (combine_keyfile_and_password(
+                    self.current_keyfile, password_text),)
             keyfile_data = load_keyfile(self.current_keyfile)
-            return hashlib.sha256(keyfile_data).hexdigest()
+            return (hashlib.sha256(keyfile_data).hexdigest(),)
 
         if not password_text:
             messagebox.showerror("Diophantine",
@@ -560,7 +573,7 @@ class DecryptTab:
         except ValueError as error:
             messagebox.showerror("Diophantine", str(error))
             return None
-        return password_text
+        return (password_text,)
 
     # ── Decrypt Execution ────────────────────────────────────────
 
@@ -570,8 +583,8 @@ class DecryptTab:
                 "No encrypted files selected.")
             return
 
-        password = self._resolve_password()
-        if password is None:
+        passwords = self._resolve_password_candidates()
+        if passwords is None:
             return
 
         # Check for mount-only mode (VeraCrypt)
@@ -583,7 +596,7 @@ class DecryptTab:
                     messagebox.showwarning("Diophantine",
                         "Mount mode only supports one VeraCrypt file at a time.\n"
                         "Only the first file will be mounted.")
-                self._mount_veracrypt(vc_files[0], password)
+                self._mount_veracrypt(vc_files[0], passwords[0])
                 return
 
         # Get or prompt for output directory
@@ -607,18 +620,8 @@ class DecryptTab:
             filename = os.path.basename(file_path)
 
             try:
-                if effective_type == "zip":
-                    self._decrypt_zip(file_path, output_dir, password)
-                elif effective_type == "7z":
-                    self._decrypt_7z(file_path, output_dir, password)
-                elif effective_type == "gpg":
-                    self._decrypt_gpg(file_path, output_dir, password)
-                elif effective_type == "veracrypt":
-                    self._extract_veracrypt(file_path, output_dir, password)
-                else:
-                    results.append((filename, "Unknown file type"))
-                    continue
-
+                self._decrypt_one(
+                    effective_type, file_path, output_dir, passwords)
                 results.append((filename, "OK"))
             except Exception as e:  # noqa: BLE001 - continue remaining user files
                 results.append((filename, str(e)))
@@ -640,6 +643,24 @@ class DecryptTab:
             messagebox.showwarning("Diophantine",
                 f"Successful: {ok_count}, Failed: {fail_count}\n\n"
                 f"Failed files:\n{details}")
+
+    def _decrypt_one(self, effective_type, file_path, output_dir, passwords):
+        """Decrypt one file, trying each candidate secret in turn.
+
+        Staging means a failed attempt leaves nothing behind, so a second
+        secret starts from the same clean destination as the first.
+        """
+        decrypt = {
+            "zip": self._decrypt_zip,
+            "7z": self._decrypt_7z,
+            "gpg": self._decrypt_gpg,
+            "veracrypt": self._extract_veracrypt,
+        }.get(effective_type)
+        if decrypt is None:
+            raise ValueError("Unknown file type")
+
+        attempt_with_secrets(
+            lambda secret: decrypt(file_path, output_dir, secret), passwords)
 
     def _decrypt_zip(self, file_path, output_dir, password):
         def on_progress(percent):

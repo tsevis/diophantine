@@ -16,7 +16,11 @@ from utils.keyfile_auth import (
 )
 from utils.naming import chronos_name, numeric_name, original_name
 from utils.profiles import delete_profile, list_profiles, load_profile, save_profile
-from utils.recovery_phrase import generate_recovery_phrase, validate_recovery_phrase
+from utils.recovery_phrase import (
+    generate_recovery_phrase,
+    secret_from_phrase,
+    validate_recovery_phrase,
+)
 from utils.safe_files import require_single_line_secret
 
 # Extension map for each encryption method
@@ -515,7 +519,7 @@ class EncryptTab:
                 messagebox.showerror(
                     "Diophantine", "Invalid recovery phrase.")
                 return
-            password = " ".join(recovery_words)
+            password = secret_from_phrase(recovery_words)
         elif (self.current_keyfile and self.use_two_factor.get()
                 and self.advanced_enabled.get()):
             if not validate_keyfile(self.current_keyfile):

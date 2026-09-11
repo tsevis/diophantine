@@ -3,6 +3,7 @@ Backup recovery phrase module for generating and validating recovery phrases
 Based on BIP-39 standard for mnemonic phrases
 """
 
+import base64
 import hashlib
 import os
 from enum import Enum
@@ -335,3 +336,41 @@ def mnemonic_to_seed(mnemonic_words, passphrase=""):
     return hashlib.pbkdf2_hmac(
         "sha512", mnemonic_str.encode("utf-8"), salt.encode("utf-8"), 2048
     )
+
+
+# VeraCrypt truncates a password past 64 characters, so the derived secret
+# has to stay well inside that.  32 bytes carries 256 bits, more than the
+# 128-256 bits a phrase itself holds.
+_DERIVED_SECRET_BYTES = 32
+
+
+def secret_from_phrase(mnemonic_words):
+    """Derive the secret an encryption tool should receive for a phrase.
+
+    A phrase is readable text with spaces, and handing it straight to a tool
+    leans entirely on that tool's own key derivation -- 7-Zip's is far weaker
+    than GnuPG's or VeraCrypt's.  Stretching it here with PBKDF2-HMAC-SHA512
+    gives every backend the same high-entropy secret regardless.
+    """
+    seed = mnemonic_to_seed(mnemonic_words)
+    return base64.urlsafe_b64encode(
+        seed[:_DERIVED_SECRET_BYTES]).decode("ascii").rstrip("=")
+
+
+def legacy_secret_from_phrase(mnemonic_words):
+    """Return the phrase as versions before derivation handed it to the tools.
+
+    Archives written then were encrypted with the phrase verbatim, so
+    decryption still has to be able to try it.
+    """
+    return " ".join(mnemonic_words)
+
+
+def phrase_secret_candidates(mnemonic_words):
+    """Return every secret a phrase might have encrypted an archive with.
+
+    Most likely first: everything written from now on uses the derived
+    secret, and the bare phrase only matters for older output.
+    """
+    return (secret_from_phrase(mnemonic_words),
+            legacy_secret_from_phrase(mnemonic_words))

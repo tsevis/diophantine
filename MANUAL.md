@@ -81,6 +81,11 @@ Profiles are stored in `config/profiles/*.json`.
 - VeraCrypt mode creates `diophantine.hc`.
 - An existing output is never overwritten. Decryption first stages results and
   stops if a top-level result would collide with an existing file or folder.
+- A recovery phrase is stretched into a high-entropy secret before it reaches
+  the encryption tool, so the strength of the archive does not depend on how
+  well that tool derives keys from a passphrase. Archives made with earlier
+  versions still open: decryption tries the stretched secret first, then the
+  phrase exactly as it was typed.
 - Use 7z when recipients support it: ZIP is retained for compatibility but its
   archive metadata, including filenames, remains visible.
 

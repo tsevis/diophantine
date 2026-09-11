@@ -61,7 +61,7 @@ This model applies to Diophantine's core functionality:
 └──────────────┘    └──────────────┘    └──────────────┘
      │                                       │
      │         ┌──────────────┐              │
-     └────────>|  Secure      |<─────────────┘
+     └────────>|  External    |<─────────────┘
                |  Deletion    │
                └──────────────┘
 ```
@@ -166,7 +166,7 @@ This model applies to Diophantine's core functionality:
 | **Physical Device Access** | Thief accesses stolen laptop | AES-256 encryption | ✓ Mitigated |
 | **Cloud Storage Breach** | Attacker gains cloud account access | Encrypted archives | ✓ Mitigated |
 | **Network Interception** | MITM during file transfer | Encrypted payload | ✓ Mitigated |
-| **File Recovery** | Recovering deleted plaintext | Secure deletion | ✓ Mitigated |
+| **File Recovery** | Recovering deleted plaintext | External deletion process; media-dependent | △ Partial |
 | **Casual Inspection** | Browsing visible files | Unreadable encrypted data | ✓ Mitigated |
 | **Brute Force** | Password guessing attacks | 256-bit keys; PBKDF2 | ✓ Mitigated |
 
@@ -265,7 +265,7 @@ hood     │        │        │      │
 |---------|------|---------------|
 | AES-256 encryption | Technical | High |
 | PBKDF2 key derivation | Technical | High |
-| Secure file deletion | Technical | Medium-High |
+| Staged output and collision checks | Technical | High |
 | No password storage | Technical | High |
 | Local-only operation | Architectural | High |
 

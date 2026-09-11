@@ -8,7 +8,7 @@ Diophantine is a local desktop GUI for encrypting and decrypting files with exte
 
 - Python 3.10+
 - `tkinter`
-- `tkinterdnd2` (`pip install -r requirements.txt`)
+- `tkinterdnd2` (`pip install --require-hashes -r requirements.txt`)
 - External tools (depending on workflow):
   - `7z` or `7zz` (recommended/required for ZIP and 7z workflows)
   - `gpg` (for GPG workflows)
@@ -41,7 +41,7 @@ python main.py
 - `Create single archive`
 - Encryption method:
   - `ZIP (AES-256)`
-  - `7z (AES-256)`
+  - `7z (AES-256, recommended; encrypts filenames)`
   - `GPG (AES-256)`
   - `VeraCrypt Container`
 - Naming scheme:
@@ -79,6 +79,10 @@ Profiles are stored in `config/profiles/*.json`.
   - `diophantine.tar.gpg`
 - Non-single mode outputs one encrypted file per input item.
 - VeraCrypt mode creates `diophantine.hc`.
+- An existing output is never overwritten. Decryption first stages results and
+  stops if a top-level result would collide with an existing file or folder.
+- Use 7z when recipients support it: ZIP is retained for compatibility but its
+  archive metadata, including filenames, remains visible.
 
 ## 6. Decrypt Tab
 
@@ -158,6 +162,11 @@ Install VeraCrypt and ensure CLI is callable as `veracrypt`.
 ### Drag-and-drop not working
 - Confirm `tkinterdnd2` is installed
 - Restart app after environment changes
+
+### 7z password entry unavailable on Windows
+For now, use GPG or VeraCrypt. The app blocks 7z on Windows because it cannot
+provide the password through the same private terminal channel used on macOS
+and Linux.
 
 ## 11. Security Operating Notes
 

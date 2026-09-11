@@ -22,8 +22,8 @@ Diophantine is a privacy-focused tool that leverages industry-standard encryptio
 
 ### Design Principles
 
-- **No custom cryptography**: All encryption is delegated to established tools with proven security records
-- **Defense in depth**: Multiple layers of protection through combined use of different encryption methods
+- **No custom ciphers**: All encryption is delegated to established tools with proven security records
+- **Conservative file handling**: Staged decryption, collision checks, and safe archive extraction reduce accidental data loss and path-traversal risk
 - **Minimal attack surface**: Simple architecture that orchestrates existing tools rather than reimplementing them
 - **Transparency**: All operations and security assumptions are documented
 
@@ -36,6 +36,8 @@ Diophantine is a privacy-focused tool that leverages industry-standard encryptio
 | Method | Algorithm | Implementation | Key Length | Mode |
 |--------|-----------|----------------|------------|------|
 | ZIP Archives | AES-256 | 7-Zip | 256-bit | CBC |
+| 7z Archives | AES-256 | 7-Zip | 256-bit | CBC |
+| GPG Files | OpenPGP symmetric encryption | GnuPG | Tool-configured | - |
 | Container Files | AES-256 | VeraCrypt | 256-bit | XTS |
 | Hash Functions | SHA-512 | VeraCrypt | 512-bit | - |
 
@@ -43,15 +45,15 @@ Diophantine is a privacy-focused tool that leverages industry-standard encryptio
 
 - **Algorithm**: AES-256 in CBC mode
 - **Key derivation**: PBKDF2 with SHA-256
-- **Iterations**: Configurable (default: 256,000+)
-- **Use case**: Portable encrypted archives for file storage and transfer
+- **Metadata**: 7z can encrypt archive headers; ZIP metadata, including filenames, remains visible
+- **Use case**: Portable encrypted archives for file storage and transfer. Prefer 7z when recipients support it.
 
 ### Container Encryption (VeraCrypt)
 
 - **Algorithm**: AES-256 in XTS mode
 - **Key derivation**: PBKDF2 with SHA-512
 - **Iterations**: 500,000+ for system partitions, 200,000+ for standard volumes
-- **Plausible deniability**: Hidden volume support (when configured)
+- **Plausible deniability**: VeraCrypt supports hidden volumes, but this application does not configure them
 - **Use case**: Persistent encrypted storage containers
 
 ### Why These Tools?
@@ -123,7 +125,7 @@ Diophantine is a privacy-focused tool that leverages industry-standard encryptio
 - ✓ Unauthorized access to cloud storage accounts
 - ✓ Interception of files during transfer
 - ✓ Casual inspection of device contents
-- ✓ Data recovery from deleted files (when properly encrypted)
+- △ Data recovery from deleted plaintext (depends on storage media and an external deletion process)
 
 ### Attack Vectors NOT Addressed
 
@@ -151,8 +153,8 @@ For adequate security, passwords should:
 ### Recommended Practices
 
 1. **Use strong, unique passwords** for each encrypted item
-2. **Enable hidden volumes** in VeraCrypt when plausible deniability is needed
-3. **Wipe original files** securely after encryption (use secure delete)
+2. **Use VeraCrypt directly** if a hidden volume or other advanced container configuration is needed
+3. **Handle original-file deletion deliberately** after encryption; storage media and the operating system determine what recovery remains possible
 4. **Verify encryption** by attempting to open encrypted files
 5. **Keep tools updated** (7-Zip, VeraCrypt, OS)
 6. **Use full disk encryption** as an additional layer
@@ -163,9 +165,9 @@ For adequate security, passwords should:
 After encrypting sensitive files:
 
 1. Verify the encrypted archive/container opens correctly
-2. Use secure deletion tools to remove originals:
-   - macOS: `srm` command or third-party tools
-   - Consider SSD limitations with secure delete
+2. Use an operating-system-appropriate deletion process for the storage media.
+   Modern SSDs, cloud-sync folders, backups, and snapshots can retain copies;
+   encryption does not retroactively protect those plaintext copies.
 
 ---
 

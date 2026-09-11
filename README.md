@@ -29,7 +29,7 @@ No cloud services, no accounts, no telemetry.
 - Python 3.10+
 - `tkinter` (usually included with Python desktop installs)
 - Python package:
-  - `tkinterdnd2>=0.3.0`
+  - `tkinterdnd2==0.6.3` (hash-pinned in `requirements.txt`)
 
 System tools:
 - Required for core archive encryption/decryption: `7z` or `7zz`
@@ -41,7 +41,7 @@ System tools:
 ```bash
 git clone https://github.com/tsevis/diophantine.git
 cd diophantine
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.txt
 ```
 
 ### Tool installation examples
@@ -94,6 +94,14 @@ Full user guide: [`MANUAL.md`](MANUAL.md)
 - Security depends on endpoint integrity and password strength.
 - Keep `7z/gpg/veracrypt` updated.
 - Verify encrypted output before deleting plaintext originals.
+- 7z is the default because it encrypts archive headers. ZIP remains available
+  for interoperability, but exposes filenames and other archive metadata.
+- Existing output is never overwritten. Decryptions are staged and committed
+  only when their top-level names do not collide with existing files.
+- On macOS and Linux, 7z passwords are supplied through a private terminal
+  prompt rather than command-line arguments. Windows 7z use is intentionally
+  blocked until an equally safe password channel is available; use GPG or
+  VeraCrypt there instead.
 
 Additional docs:
 - [`docs/SECURITY.md`](docs/SECURITY.md)

@@ -221,3 +221,10 @@ def test_progress_ignores_a_percent_sign_inside_a_member_name():
 
 def test_progress_stays_silent_until_the_tool_prints_a_percentage():
     assert _percentages("Scanning the drive for archives:\r\n") == []
+
+
+def test_progress_skips_a_nonsense_percentage_and_keeps_looking():
+    """``\\d{1,3}`` can match a value no percentage should ever take."""
+    transcript = "  7%\x08\x08\x08\x08 42% 9 - bulk/f009.bin\x08\x08 999%\x08"
+
+    assert _percentages(transcript) == [42.0]
